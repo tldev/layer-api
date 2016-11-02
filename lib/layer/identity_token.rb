@@ -1,11 +1,20 @@
 module Layer
   class IdentityToken
-    attr_reader :user_id, :nonce, :expires_at
+    attr_reader :user_id,
+                :nonce,
+                :expires_at,
+                :optional_attributes
 
     def initialize(options = {})
       @user_id = options[:user_id]
       @nonce = options[:nonce]
       @expires_at = (options[:expires_at] || Time.now+(1209600))
+      @optional_attributes = {
+        first_name: options[:first_name],
+        last_name: options[:last_name],
+        display_name: options[:display_name],
+        avatar_url: options[:avatar_url]
+      }.delete_if { |_, v| v.nil? }
     end
 
     def to_s
@@ -41,7 +50,7 @@ module Layer
         iat: Time.now.to_i,
         exp: expires_at.to_i,
         nce: nonce
-      }
+      }.merge!(optional_attributes)
     end
 
     def private_key

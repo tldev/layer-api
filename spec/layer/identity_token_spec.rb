@@ -1,21 +1,56 @@
-
+require 'spec_helper'
 
 describe Layer::IdentityToken do
   describe ".new" do
-    it "should allow you to set the user_id, nonce and expires_at variables" do
-      user_id = "1234"
-      nonce = "your_random_nonce"
-      expires_at = "12345678"
+    let(:user_id) { '1234' }
+    let(:nonce) { 'your_random_nonce' }
+    let(:expires_at) { '12345678' }
+    let(:optional_attributes) { {} }
 
-      token = Layer::IdentityToken.new(
+    subject(:token) do
+      Layer::IdentityToken.new(
         user_id: user_id,
         nonce: nonce,
-        expires_at: expires_at
+        expires_at: expires_at,
+        **optional_attributes
       )
+    end
 
+    it "should allow you to set the user_id, nonce and expires_at variables" do
       expect(token.user_id).to eq(user_id)
       expect(token.nonce).to eq(nonce)
       expect(token.expires_at).to eq(expires_at)
+    end
+
+    context 'optional attributes' do
+      let(:optional_attributes) do
+        {
+          first_name: 'John',
+          last_name: 'Doe',
+          display_name: 'John D.',
+          avatar_url: 'http://test.org/test.jpeg'
+        }
+      end
+
+      it "should allow you to pass optional attributes" do
+        expect(token.optional_attributes).to eq(optional_attributes)
+      end
+
+      context 'with unknown attributes' do
+        before { optional_attributes[:unknown] = 'test' }
+
+        it "should not include the unknown attributes" do
+          expect(token.optional_attributes).not_to include(:unknown)
+        end
+      end
+
+      context 'with nil attributes' do
+        before { optional_attributes[:first_name] = nil }
+
+        it "should not include the nil attributes" do
+          expect(token.optional_attributes).not_to include(:first_name)
+        end
+      end
     end
   end
 
@@ -46,19 +81,33 @@ describe Layer::IdentityToken do
   end
 
   describe ".claim" do
-    it "should return necessary payload" do
-      token = Layer::IdentityToken.new(
+    let(:optional_attributes) { {} }
+    let(:token) do
+      Layer::IdentityToken.new(
         user_id: "user_id",
         nonce: "nonce",
-        expires_at: 1234567
+        expires_at: 1234567,
+        **optional_attributes
       )
+    end
 
-      claim = token.send(:claim)
+    subject(:claim) do
+      token.send(:claim)
+    end
 
+    it "should return necessary payload" do
       expect(claim[:iss]).to eq(token.layer_provider_id)
       expect(claim[:prn]).to eq(token.user_id)
       expect(claim[:exp]).to eq(token.expires_at)
       expect(claim[:nce]).to eq(token.nonce)
+    end
+
+    context "with optional attributes present" do
+      before { optional_attributes[:first_name] = 'Bob' }
+
+      it "should include the optional attribute" do
+        expect(claim[:first_name]).to eq(token.optional_attributes[:first_name])
+      end
     end
   end
 
